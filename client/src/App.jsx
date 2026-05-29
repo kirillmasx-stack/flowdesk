@@ -1,13 +1,8 @@
 // client/src/App.jsx
-// This file wires the real API to the FlowDesk UI.
-// The full UI component is imported from FlowDeskApp.jsx
-// which is a direct copy of the artifact (teamlead-crm.jsx)
-// with the mock data replaced by API calls.
-
 import { useState, useEffect } from 'react';
 import { api, saveToken, clearToken } from './api.js';
+import FlowDeskUI from './FlowDeskUI.jsx';
 
-// ── Loading screen ───────────────────────────────────────
 function Loading() {
   return (
     <div style={{ minHeight:'100vh', background:'#0a0c10', display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -20,18 +15,19 @@ function Loading() {
 }
 
 export default function App() {
-  const [status, setStatus] = useState(null); // null = loading, {hasTeamLead}
+  const [status, setStatus] = useState(null);
   const [user,   setUser]   = useState(null);
 
-  // ── On mount: check server status + restore session ────
   useEffect(() => {
-    Promise.all([
-      api.status().catch(() => ({ hasTeamLead: true })),
-      api.me().catch(() => null),
-    ]).then(([s, me]) => {
-      setStatus(s);
-      if (me) setUser(me);
-    });
+    api.status()
+      .then(s => {
+        setStatus(s);
+        const token = localStorage.getItem('fd_token');
+        if (!token) return null;
+        return api.me().catch(() => { clearToken(); return null; });
+      })
+      .then(me => { if (me) setUser(me); })
+      .catch(() => setStatus({ hasTeamLead: false }));
   }, []);
 
   const handleLogin = (token, userData) => {
@@ -46,11 +42,8 @@ export default function App() {
 
   if (status === null) return <Loading />;
 
-  // Lazy-load the full UI (it's large)
-  const FlowDeskApp = require('./FlowDeskApp.jsx').default;
-
   return (
-    <FlowDeskApp
+    <FlowDeskUI
       serverStatus={status}
       currentUser={user}
       onLogin={handleLogin}
