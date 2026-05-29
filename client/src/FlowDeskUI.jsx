@@ -2768,7 +2768,6 @@ export default function App({ serverStatus, currentUser, onLogin: _onLoginProp, 
 
 // ── BOT PAGE ──────────────────────────────────────────────────────────────────
 function BotPage({ botSettings, setBotSettings, allUsers, caps, buyers }) {
-  const _req = 'req' + 'uire';
   const [tab, setTab] = useState("setup");
   const [testResult, setTestResult] = useState(null);
   const [testing, setTesting] = useState(false);
@@ -2837,63 +2836,20 @@ function BotPage({ botSettings, setBotSettings, allUsers, caps, buyers }) {
   // ── Tabs ──────────────────────────────────────────────────────────────────
   const TABS = [["setup","Настройка"],["users","Chat ID"],["alerts","Алерты"],["digest","Дайджест"],["code","Код бота"]];
 
-  const codeSnippet = `// FlowDesk Telegram Bot — Node.js
-// npm install node-telegram-bot-api node-cron
-
-const TelegramBot = ${_req}('node-telegram-bot-api');
-const cron = ${_req}('node-cron');
-
-const TOKEN = '${botSettings.token || "YOUR_BOT_TOKEN"}';
-const bot = new TelegramBot(TOKEN, { polling: true });
-
-// chat_ids по ролям (заполняются после /start)
-const CHAT_IDS = {
-  teamlead: '${botSettings.chatIds?.tl1 || "TL_CHAT_ID"}',
-  buyers: {
-${buyers.map(b => `    '${b.id}': '${botSettings.chatIds?.[b.id] || b.login + "_CHAT_ID"}'`).join(",\n")}
-  }
-};
-
-// ── Получить chat_id при /start ──────────────────────────────
-bot.onText(/\\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id,
-    \`Твой chat_id: \\\`\${msg.chat.id}\\\`\\nОтправь его тимлиду для настройки.\`,
-    { parse_mode: 'Markdown' }
-  );
-});
-
-// ── Алерт при заливе капы ────────────────────────────────────
-function checkCaps(caps) {
-  caps.forEach(cap => {
-    const pct = Math.round(cap.current / cap.daily * 100);
-    if (pct >= ${botSettings.alertAt75 ? 75 : 90}) {
-      const emoji = pct >= 100 ? '🔴' : pct >= 90 ? '🚨' : '⚠️';
-      const text = \`\${emoji} <b>Залитость \${pct}%</b>\\n\`
-        + \`\${cap.geo} | \${cap.offerName} #\${cap.offerId}\\n\`
-        + \`Залито: \${cap.current}/\${cap.daily}\`;
-
-      // Шлём тимлиду
-      bot.sendMessage(CHAT_IDS.teamlead, text, { parse_mode: 'HTML' });
-    }
-  });
-}
-
-// ── Ежечасный дайджест баерам ────────────────────────────────
-cron.schedule('0 * * * *', () => {
-  Object.entries(CHAT_IDS.buyers).forEach(([buyerId, chatId]) => {
-    if (!chatId) return;
-    const buyerCaps = getCapsForBuyer(buyerId).slice(0, ${botSettings.buyerTopN});
-    const text = buildDigestMessage(buyerCaps);
-    bot.sendMessage(chatId, text, { parse_mode: 'HTML' });
-  });
-
-  // Дайджест тимлиду
-  const topCaps = getAllCaps().sort((a,b) => b.pct - a.pct).slice(0, ${botSettings.tlTopN});
-  bot.sendMessage(CHAT_IDS.teamlead, buildTLDigest(topCaps), { parse_mode: 'HTML' });
-});
-
-// ── Запуск ───────────────────────────────────────────────────
-console.log('FlowDesk Bot запущен ✅');`;
+  const codeSnippet = [
+    "// FlowDesk Telegram Bot",
+    "// npm install node-telegram-bot-api node-cron",
+    "",
+    "const TOKEN = '" + (botSettings.token || "YOUR_BOT_TOKEN") + "';",
+    "const bot = new TelegramBot(TOKEN, { polling: true });",
+    "",
+    "// Chat IDs",
+    "const CHAT_IDS = {",
+    "  teamlead: '" + (botSettings.chatIds?.tl1 || "TL_CHAT_ID") + "',",
+    "};",
+    "",
+    "// Alerts + digest cron — see DEPLOY-RAILWAY.md",
+  ].join("\n")
 
   return (
     <div>
