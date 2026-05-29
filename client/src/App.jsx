@@ -1,6 +1,6 @@
 // client/src/App.jsx
 // This file wires the real API to the FlowDesk UI.
-// The full UI component is imported from FlowDeskUI.jsx
+// The full UI component is imported from FlowDeskApp.jsx
 // which is a direct copy of the artifact (teamlead-crm.jsx)
 // with the mock data replaced by API calls.
 
@@ -47,10 +47,10 @@ export default function App() {
   if (status === null) return <Loading />;
 
   // Lazy-load the full UI (it's large)
-  const FlowDeskUI = require('./FlowDeskUI.jsx').default;
+  const FlowDeskApp = require('./FlowDeskApp.jsx').default;
 
   return (
-    <FlowDeskUI
+    <FlowDeskApp
       serverStatus={status}
       currentUser={user}
       onLogin={handleLogin}
