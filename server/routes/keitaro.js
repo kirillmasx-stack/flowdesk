@@ -183,3 +183,73 @@ router.get('/stats/dashboard', auth, tlOnly, async (req, res) => {
 });
 
 module.exports = router;
+
+// ── POST /api/keitaro/sync-range ───────────────────────────
+// Import historical data for a specific date range
+router.post('/sync-range', auth, tlOnly, async (req, res) => {
+  try {
+    const { from, to } = req.body;
+    if (!from || !to) return res.status(400).json({ error: 'from and to required' });
+
+    const kUrl = process.env.KEITARO_URL;
+    const kKey = process.env.KEITARO_API_KEY;
+    if (!kUrl || !kKey) return res.status(400).json({ error: 'Keitaro not configured' });
+
+    const payload = {
+      range:    { from, to, timezone: 'UTC' },
+      grouping: ['campaign', 'day'],
+      metrics:  ['clicks', 'conversions', 'revenue', 'cost'],
+      filters:  [],
+    };
+
+    const resp = await fetch(`${kUrl}/api/v1/report/build`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Api-Key': kKey },
+      body:    JSON.stringify(payload),
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      return res.status(resp.status).json({ error: `Keitaro: ${text}` });
+    }
+
+    const data = await resp.json();
+    const campaigns = (data.rows || []).map(r => ({
+      name:    r.campaign_name || '',
+      clicks:  parseInt(r.clicks || 0),
+      conv:    parseInt(r.conversions || 0),
+      revenue: parseFloat(r.revenue || 0),
+      spend:   parseFloat(r.cost || 0),
+      date:    r.day || from,
+    }));
+
+    // Save each row with its date
+    const { parseCampaign, saveStats } = require('../services/keitaro');
+    let saved = 0;
+    for (const c of campaigns) {
+      if (!c.name) continue;
+      const p = parseCampaign(c.name);
+      await db.run(`
+        INSERT INTO campaign_stats
+          (date, campaign_name, geo, offer_name, offer_id, source, landing_sign, buyer_info, antic_id, buyer_name, clicks, conversions, revenue, spend)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        ON CONFLICT (date, campaign_name)
+        DO UPDATE SET clicks=$11, conversions=$12, revenue=$13, spend=$14
+      `, [
+        c.date, c.name, p.geo, p.offerName, p.offerId,
+        p.source, p.landingSign, p.buyerInfo, p.anticId, p.buyerName,
+        c.clicks, c.conv, c.revenue, c.spend,
+      ]);
+      saved++;
+    }
+
+    await db.run(
+      "INSERT INTO keitaro_sync (campaigns, status) VALUES ($1, 'ok')",
+      [JSON.stringify(campaigns.slice(0, 10))]
+    );
+
+    res.json({ campaigns, saved, from, to });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});

@@ -1792,6 +1792,9 @@ function KeitaroPage() {
   const [interval, setInterval_] = useState(15);
   const [configured, setConfigured] = useState(false);
   const [history,  setHistory]  = useState([]);
+  const [importDays, setImportDays] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
   const ks = useSortable("revenue");
 
   // Load config on mount
@@ -1831,6 +1834,42 @@ function KeitaroPage() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('fd_token')}` },
       body: JSON.stringify({ interval: val }),
     }).catch(() => {});
+  };
+
+  const runHistoricalImport = async (days) => {
+    setImporting(true); setImportResult(null);
+    const intervals = {
+      30:  ['last_30_days'],
+      60:  ['last_30_days', 'previous_30_days'],
+      90:  ['last_30_days', 'previous_30_days', 'two_months_ago'],
+      180: ['last_30_days', 'previous_30_days', 'two_months_ago', 'three_months_ago', 'four_months_ago', 'five_months_ago'],
+    };
+    // Build date ranges manually
+    const ranges = [];
+    for (let i = 0; i < days; i += 30) {
+      const to   = new Date(); to.setDate(to.getDate() - i);
+      const from = new Date(); from.setDate(from.getDate() - Math.min(i + 29, days));
+      ranges.push({
+        from: from.toISOString().split('T')[0],
+        to:   to.toISOString().split('T')[0],
+      });
+    }
+    let totalCampaigns = 0;
+    let errors = 0;
+    for (const range of ranges) {
+      try {
+        const r = await fetch('/api/keitaro/sync-range', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('fd_token')}` },
+          body: JSON.stringify(range),
+        });
+        const d = await r.json();
+        if (r.ok) totalCampaigns += d.campaigns?.length || 0;
+        else errors++;
+      } catch { errors++; }
+    }
+    setImportResult({ campaigns: totalCampaigns, errors, days });
+    setImporting(false);
   };
 
   const total = data ? data.campaigns.reduce((s, c) => ({ clicks: s.clicks + c.clicks, conv: s.conv + c.conv, revenue: s.revenue + c.revenue, spend: s.spend + c.spend }), { clicks: 0, conv: 0, revenue: 0, spend: 0 }) : null;
@@ -1889,6 +1928,49 @@ function KeitaroPage() {
           ))}
         </div>
       )}
+
+      {/* Historical import */}
+      <div style={{ background:"#111318", border:"1px solid #1e2330", borderRadius:10, padding:22, marginBottom:18 }}>
+        <div style={{ fontWeight:700, fontSize:14, marginBottom:6 }}>Исторический импорт</div>
+        <div style={{ fontSize:12, color:"#7a8299", marginBottom:18, lineHeight:1.6 }}>
+          Подтянуть данные за прошлые периоды — офферы, клики, конверсии, доход.<br/>
+          Данные сохранятся в историю и появятся в разделе «Офферы».
+        </div>
+        <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
+          {[30,60,90,180].map(d => (
+            <button key={d} onClick={() => setImportDays(d)} style={{
+              ...S.btn(importDays===d ? "accent" : "default"),
+              padding:"8px 18px", fontSize:13,
+            }}>{d} дней</button>
+          ))}
+        </div>
+        {importDays && !importing && !importResult && (
+          <div style={{ background:"rgba(0,229,255,0.05)", border:"1px solid rgba(0,229,255,0.2)", borderRadius:8, padding:"12px 14px", marginBottom:14, fontSize:12 }}>
+            Будет импортировано ~{Math.ceil(importDays/30)} запроса к Keitaro API по 30 дней каждый.
+            Это займёт {importDays <= 60 ? "несколько секунд" : "до минуты"}.
+          </div>
+        )}
+        {importResult && (
+          <div style={{ background:"rgba(0,200,150,0.07)", border:"1px solid rgba(0,200,150,0.2)", borderRadius:8, padding:"12px 14px", marginBottom:14, fontSize:12, color:"#00c896" }}>
+            ✅ Импорт завершён за {importResult.days} дней: {importResult.campaigns} записей
+            {importResult.errors > 0 && <span style={{ color:"#f5c842" }}> · {importResult.errors} ошибок</span>}
+          </div>
+        )}
+        <div style={{ display:"flex", gap:8 }}>
+          <button style={{ ...S.btn("accent"), padding:"10px 24px", opacity: (!importDays || importing || !configured) ? 0.5 : 1 }}
+            disabled={!importDays || importing || !configured}
+            onClick={() => runHistoricalImport(importDays)}>
+            {importing ? `Импорт… (${importDays} дней)` : "⬇ Начать импорт"}
+          </button>
+          {importing && (
+            <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"#7a8299" }}>
+              <div style={{ width:16, height:16, border:"2px solid #252d3d", borderTop:"2px solid #00e5ff", borderRadius:"50%", animation:"spin 1s linear infinite" }} />
+              Загружаем данные из Keitaro…
+            </div>
+          )}
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
       {data && (
         <>
           <div style={S.statGrid}>
