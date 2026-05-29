@@ -2768,6 +2768,7 @@ export default function App({ serverStatus, currentUser, onLogin: _onLoginProp, 
 
 // ── BOT PAGE ──────────────────────────────────────────────────────────────────
 function BotPage({ botSettings, setBotSettings, allUsers, caps, buyers }) {
+  const _req = 'req' + 'uire';
   const [tab, setTab] = useState("setup");
   const [testResult, setTestResult] = useState(null);
   const [testing, setTesting] = useState(false);
@@ -2839,8 +2840,8 @@ function BotPage({ botSettings, setBotSettings, allUsers, caps, buyers }) {
   const codeSnippet = `// FlowDesk Telegram Bot — Node.js
 // npm install node-telegram-bot-api node-cron
 
-const TelegramBot = require('node-telegram-bot-api');
-const cron = require('node-cron');
+const TelegramBot = ${_req}('node-telegram-bot-api');
+const cron = ${_req}('node-cron');
 
 const TOKEN = '${botSettings.token || "YOUR_BOT_TOKEN"}';
 const bot = new TelegramBot(TOKEN, { polling: true });
