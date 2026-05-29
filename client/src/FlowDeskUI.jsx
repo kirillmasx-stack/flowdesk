@@ -2506,9 +2506,7 @@ function OffersHistory({ buyers }) {
               );
             })}
           </tbody>
-        </table>
-        </div>
-                  {rows.length > 0 && (() => {
+          {rows.length > 0 && (() => {
             const vis = rows.slice(0, limit === Infinity ? rows.length : limit);
             const vTot = vis.reduce((s,r)=>({clicks:s.clicks+r.clicks,leads:s.leads+r.leads,sales:s.sales+r.sales,spend:s.spend+r.spend,revenue:s.revenue+r.revenue}),{clicks:0,leads:0,sales:0,spend:0,revenue:0});
             const vRoi = vTot.spend>0?Math.round((vTot.revenue-vTot.spend)/vTot.spend*100):0;
@@ -2531,6 +2529,7 @@ function OffersHistory({ buyers }) {
             );
           })()}
         </table>
+        </div>
       </div>
     </div>
   );
