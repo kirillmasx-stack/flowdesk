@@ -926,14 +926,6 @@ function TLDash({ buyers, caps, allUsers }) {
       )}
 
       {/* ── STAT CARDS ── */}
-      {/* Data source indicator */}
-      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, fontSize:12 }}>
-        <div style={{ width:8, height:8, borderRadius:"50%", background: useApiData ? "#00c896" : "#f5c842",
-          boxShadow: useApiData ? "0 0 6px #00c896" : "none" }} />
-        {apiLoading ? <span style={{ color:"#7a8299" }}>Загрузка данных…</span>
-          : useApiData ? <span style={{ color:"#00c896" }}>Реальные данные из Keitaro</span>
-          : <span style={{ color:"#f5c842" }}>Демо-данные — подключите Keitaro для реальной статистики</span>}
-      </div>
       <div style={S.statGrid}>
         <StatCard label="Revenue" val={fmtUSD(totals.revenue)} color="#00e5ff" sub={labelStr} />
         <StatCard label="Spend"   val={fmtUSD(totals.spend)}   color="#a78bfa" />
@@ -2333,6 +2325,14 @@ function OffersHistory({ buyers }) {
 
   return (
     <div>
+      {/* Data source indicator */}
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, fontSize:12 }}>
+        <div style={{ width:8, height:8, borderRadius:"50%", background: useApiData ? "#00c896" : "#f5c842", boxShadow: useApiData ? "0 0 6px #00c896" : "none" }} />
+        {apiLoading ? <span style={{ color:"#7a8299" }}>Загрузка данных…</span>
+          : useApiData ? <span style={{ color:"#00c896" }}>Реальные данные из Keitaro</span>
+          : <span style={{ color:"#f5c842" }}>Демо-данные — подключите Keitaro для реальной статистики</span>}
+      </div>
+
       {/* ── TOP STAT CARDS ── */}
       <div style={S.statGrid}>
         <StatCard label="Revenue"    val={fmtUSD(totals.revenue)} color="#00e5ff" sub={`${rows.length} офферов`}/>
